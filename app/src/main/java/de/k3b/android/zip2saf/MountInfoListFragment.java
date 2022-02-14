@@ -63,6 +63,8 @@ public class MountInfoListFragment extends Fragment {
 
     private FragmentMountinfoListBinding binding;
 
+    private MountInfoRepository repository = MountInfoRepository.getInstance();
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -92,7 +94,7 @@ public class MountInfoListFragment extends Fragment {
     ) {
 
         recyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(
-                MountInfoRepository.ITEMS,
+                repository.getAll(),
                 itemDetailFragmentContainer
         ));
     }

@@ -13,35 +13,38 @@ import java.util.Map;
  */
 public class MountInfoRepository {
 
-    /**
-     * An array of sample (data) items.
-     */
-    public static final List<MountInfo> ITEMS = new ArrayList<>();
+    private final List<MountInfo> ITEMS = new ArrayList<>();
 
     /**
      * A map of sample (data) items, by ID.
      */
-    public static final Map<String, MountInfo> ITEM_MAP = new HashMap<>();
+    private final Map<String, MountInfo> ID2MOUNT = new HashMap<>();
 
-    private static final int COUNT = 25;
+    private static MountInfoRepository instance = null;
 
-    static {
+    private MountInfoRepository() {
+        createDemoData();
+    }
+
+    private void createDemoData() {
         // Add some sample items.
-        for (int i = 1; i <= COUNT; i++) {
-            addItem(createPlaceholderItem(i));
+        for (int i = 1; i <= 25; i++) {
+            add(createPlaceholderItem(i));
         }
     }
 
-    private static void addItem(MountInfo item) {
-        ITEMS.add(item);
-        ITEM_MAP.put(item.id, item);
+    public static MountInfoRepository getInstance() {
+        if (instance == null) {
+            instance = new MountInfoRepository();
+        }
+        return instance;
     }
 
-    private static MountInfo createPlaceholderItem(int position) {
+    private MountInfo createPlaceholderItem(int position) {
         return new MountInfo(String.valueOf(position), "Item " + position, makeDetails(position));
     }
 
-    private static String makeDetails(int position) {
+    private String makeDetails(int position) {
         StringBuilder builder = new StringBuilder();
         builder.append("Details about Item: ").append(position);
         for (int i = 0; i < position; i++) {
@@ -50,4 +53,16 @@ public class MountInfoRepository {
         return builder.toString();
     }
 
+    public void add(MountInfo item) {
+        ITEMS.add(item);
+        ID2MOUNT.put(item.id, item);
+    }
+
+    public MountInfo getById(String s) {
+        return ID2MOUNT.get(s);
+    }
+
+    public List<MountInfo> getAll() {
+        return ITEMS;
+    }
 }

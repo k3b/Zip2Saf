@@ -25,6 +25,7 @@ import de.k3b.android.zip2saf.databinding.FragmentMountinfoDetailBinding;
  * on handsets.
  */
 public class MountInfoDetailFragment extends Fragment {
+    MountInfoRepository repository = MountInfoRepository.getInstance();
 
     /**
      * The fragment argument representing the item ID that this fragment
@@ -42,11 +43,12 @@ public class MountInfoDetailFragment extends Fragment {
     private final View.OnDragListener dragListener = (v, event) -> {
         if (event.getAction() == DragEvent.ACTION_DROP) {
             ClipData.Item clipDataItem = event.getClipData().getItemAt(0);
-            mItem = MountInfoRepository.ITEM_MAP.get(clipDataItem.getText().toString());
+            mItem = repository.getById(clipDataItem.getText().toString());
             updateContent();
         }
         return true;
     };
+
     private FragmentMountinfoDetailBinding binding;
 
     /**
@@ -66,7 +68,7 @@ public class MountInfoDetailFragment extends Fragment {
                 // Load the data content specified by the fragment
                 // arguments. In a real-world scenario, use a Loader
                 // to load content from a content provider.
-                mItem = MountInfoRepository.ITEM_MAP.get(arguments.getString(ARG_ITEM_ID));
+                mItem = repository.getById(arguments.getString(ARG_ITEM_ID));
             }
         }
     }
