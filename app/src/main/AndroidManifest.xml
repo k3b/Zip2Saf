@@ -10,6 +10,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ZipSafReader">
+        <activity
+            android:name=".MountInfoDetailHostActivity"
+            android:exported="true"
+            android:label="@string/title_activity_mount_info_detail_host"
+            android:resizeableActivity="true"
+            tools:targetApi="24">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
