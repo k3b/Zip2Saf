@@ -29,7 +29,7 @@ public class MountInfoRepository {
     private void createDemoData() {
         // Add some sample items.
         for (int i = 1; i <= 25; i++) {
-            add(createPlaceholderItem(i));
+            add(createDemoItem(i));
         }
     }
 
@@ -40,8 +40,9 @@ public class MountInfoRepository {
         return instance;
     }
 
-    private MountInfo createPlaceholderItem(int position) {
-        return new MountInfo(String.valueOf(position), "Item " + position, makeDetails(position));
+    private MountInfo createDemoItem(int position) {
+        String zipId = "myZip_" + position + ".zip";
+        return new MountInfo(zipId, "/path/to/" + zipId, makeDetails(position));
     }
 
     private String makeDetails(int position) {
@@ -55,7 +56,7 @@ public class MountInfoRepository {
 
     public void add(MountInfo item) {
         ITEMS.add(item);
-        ID2MOUNT.put(item.id, item);
+        ID2MOUNT.put(item.zipId, item);
     }
 
     public MountInfo getById(String s) {
@@ -64,5 +65,16 @@ public class MountInfoRepository {
 
     public List<MountInfo> getAll() {
         return ITEMS;
+    }
+
+    public MountInfo getByPosition(int position) {
+        if (position < 0 || position >= getCount()) {
+            return null;
+        }
+        return ITEMS.get(position);
+    }
+
+    public int getCount() {
+        return ITEMS.size();
     }
 }

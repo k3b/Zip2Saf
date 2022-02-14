@@ -24,8 +24,6 @@ import de.k3b.android.zip2saf.databinding.MountinfoListContentBinding;
 
 import de.k3b.android.zip2saf.data.MountInfoRepository;
 
-import java.util.List;
-
 /**
  * A fragment representing a list of Mounted Zip Files. This fragment
  * has different presentations for handset and larger screen devices. On
@@ -93,8 +91,8 @@ public class MountInfoListFragment extends Fragment {
             View itemDetailFragmentContainer
     ) {
 
-        recyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(
-                repository.getAll(),
+        recyclerView.setAdapter(new MountInfoListItemRecyclerViewAdapter(
+                repository,
                 itemDetailFragmentContainer
         ));
     }
@@ -105,15 +103,15 @@ public class MountInfoListFragment extends Fragment {
         binding = null;
     }
 
-    public static class SimpleItemRecyclerViewAdapter
-            extends RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder> {
+    public static class MountInfoListItemRecyclerViewAdapter
+            extends RecyclerView.Adapter<MountInfoListItemRecyclerViewAdapter.ViewHolder> {
 
-        private final List<MountInfo> mValues;
+        private final MountInfoRepository mRepository;
         private final View mItemDetailFragmentContainer;
 
-        SimpleItemRecyclerViewAdapter(List<MountInfo> items,
-                                      View itemDetailFragmentContainer) {
-            mValues = items;
+        MountInfoListItemRecyclerViewAdapter(MountInfoRepository repository,
+                                             View itemDetailFragmentContainer) {
+            this.mRepository = repository;
             mItemDetailFragmentContainer = itemDetailFragmentContainer;
         }
 
@@ -129,15 +127,15 @@ public class MountInfoListFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(final ViewHolder holder, int position) {
-            holder.mIdView.setText(mValues.get(position).id);
-            holder.mContentView.setText(mValues.get(position).content);
+            final MountInfo mountInfo = getByPosition(position);
+            holder.mZipIdView.setText(mountInfo.zipId);
 
-            holder.itemView.setTag(mValues.get(position));
+            holder.itemView.setTag(mountInfo);
             holder.itemView.setOnClickListener(itemView -> {
                 MountInfo item =
                         (MountInfo) itemView.getTag();
                 Bundle arguments = new Bundle();
-                arguments.putString(MountInfoDetailFragment.ARG_ITEM_ID, item.id);
+                arguments.putString(MountInfoDetailFragment.ARG_ITEM_ID, item.zipId);
                 if (mItemDetailFragmentContainer != null) {
                     Navigation.findNavController(mItemDetailFragmentContainer)
                             .navigate(R.id.fragment_mountinfo_detail, arguments);
@@ -156,7 +154,7 @@ public class MountInfoListFragment extends Fragment {
                             (MountInfo) holder.itemView.getTag();
                     Toast.makeText(
                             holder.itemView.getContext(),
-                            "Context click of item " + item.id,
+                            "Context click of item " + item.zipId,
                             Toast.LENGTH_LONG
                     ).show();
                     return true;
@@ -165,9 +163,9 @@ public class MountInfoListFragment extends Fragment {
             holder.itemView.setOnLongClickListener(v -> {
                 // Setting the item id as the clip data so that the drop target is able to
                 // identify the id of the content
-                ClipData.Item clipItem = new ClipData.Item(mValues.get(position).id);
+                ClipData.Item clipItem = new ClipData.Item(mountInfo.zipId);
                 ClipData dragData = new ClipData(
-                        ((MountInfo) v.getTag()).content,
+                        ((MountInfo) v.getTag()).uri,
                         new String[]{ClipDescription.MIMETYPE_TEXT_PLAIN},
                         clipItem
                 );
@@ -191,19 +189,25 @@ public class MountInfoListFragment extends Fragment {
             });
         }
 
+        @NonNull
+        private MountInfo getByPosition(int position) {
+            MountInfo mountInfo = mRepository.getByPosition(position);
+            if (mountInfo == null) mountInfo = MountInfo.EMPTY;
+            return mountInfo;
+        }
+
         @Override
         public int getItemCount() {
-            return mValues.size();
+            return mRepository.getCount();
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            final TextView mIdView;
-            final TextView mContentView;
+            // final TextView mPositionView;
+            final TextView mZipIdView;
 
             ViewHolder(MountinfoListContentBinding binding) {
                 super(binding.getRoot());
-                mIdView = binding.idText;
-                mContentView = binding.content;
+                mZipIdView = binding.zipId;
             }
 
         }

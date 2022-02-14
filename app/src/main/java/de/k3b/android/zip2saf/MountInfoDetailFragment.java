@@ -36,14 +36,14 @@ public class MountInfoDetailFragment extends Fragment {
     /**
      * The data content this fragment is presenting.
      */
-    private MountInfo mItem;
-    private CollapsingToolbarLayout mToolbarLayout;
-    private TextView mTextView;
+    private MountInfo mountInfo;
+    private CollapsingToolbarLayout detailToolbar;
+    private TextView tvMountinfoDetail;
 
     private final View.OnDragListener dragListener = (v, event) -> {
         if (event.getAction() == DragEvent.ACTION_DROP) {
             ClipData.Item clipDataItem = event.getClipData().getItemAt(0);
-            mItem = repository.getById(clipDataItem.getText().toString());
+            mountInfo = repository.getById(clipDataItem.getText().toString());
             updateContent();
         }
         return true;
@@ -68,7 +68,7 @@ public class MountInfoDetailFragment extends Fragment {
                 // Load the data content specified by the fragment
                 // arguments. In a real-world scenario, use a Loader
                 // to load content from a content provider.
-                mItem = repository.getById(arguments.getString(ARG_ITEM_ID));
+                mountInfo = repository.getById(arguments.getString(ARG_ITEM_ID));
             }
         }
     }
@@ -80,8 +80,8 @@ public class MountInfoDetailFragment extends Fragment {
         binding = FragmentMountinfoDetailBinding.inflate(inflater, container, false);
         View rootView = binding.getRoot();
 
-        mToolbarLayout = rootView.findViewById(R.id.toolbar_layout);
-        mTextView = binding.mountinfoDetail;
+        detailToolbar = rootView.findViewById(R.id.toolbar_layout);
+        tvMountinfoDetail = binding.mountinfoDetail;
 
         // Show the data content as text in a TextView & in the toolbar if available.
         updateContent();
@@ -96,10 +96,10 @@ public class MountInfoDetailFragment extends Fragment {
     }
 
     private void updateContent() {
-        if (mItem != null) {
-            mTextView.setText(mItem.details);
-            if (mToolbarLayout != null) {
-                mToolbarLayout.setTitle(mItem.content);
+        if (mountInfo != null) {
+            tvMountinfoDetail.setText(mountInfo.uri + "\n" + mountInfo.details);
+            if (detailToolbar != null) {
+                detailToolbar.setTitle(mountInfo.zipId);
             }
         }
     }
