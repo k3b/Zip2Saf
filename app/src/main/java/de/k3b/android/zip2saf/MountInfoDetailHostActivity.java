@@ -21,7 +21,6 @@ package de.k3b.android.zip2saf;
 
 import android.os.Bundle;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -52,5 +51,17 @@ public class MountInfoDetailHostActivity extends FilePermissionActivity {
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_mountinfo_detail);
         return navController.navigateUp() || super.onSupportNavigateUp();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        AndroidMountInfoRepositoryHelper.saveRepository(this);
+    }
+
+    @Override
+    protected void onResume() {
+        AndroidMountInfoRepositoryHelper.loadRepository(this);
+        super.onResume();
     }
 }

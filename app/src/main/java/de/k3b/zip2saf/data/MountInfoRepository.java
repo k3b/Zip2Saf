@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * JSon based in memory Repository implementation for {@link MountInfo} items.
+ * JSon based (android independant) in memory Repository implementation for {@link MountInfo} items.
  */
 public class MountInfoRepository {
     private static Gson gson = setPrettyPrinting(false);

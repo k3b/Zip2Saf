@@ -22,7 +22,7 @@ package de.k3b.zip2saf.data;
 import androidx.annotation.NonNull;
 
 /**
- * A data item representing a piece of content.
+ * A data item representing a piece of content. (android independant) .
  */
 public class MountInfo  {
     /** name of zip file without path. I.E: Test.zip */
