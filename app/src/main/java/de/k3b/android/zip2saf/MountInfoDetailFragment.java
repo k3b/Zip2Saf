@@ -33,8 +33,8 @@ import android.widget.TextView;
 
 import com.google.android.material.appbar.CollapsingToolbarLayout;
 
-import de.k3b.android.zip2saf.data.MountInfo;
-import de.k3b.android.zip2saf.data.MountInfoRepository;
+import de.k3b.zip2saf.data.MountInfo;
+import de.k3b.zip2saf.data.MountInfoRepository;
 import de.k3b.android.zip2saf.databinding.FragmentMountinfoDetailBinding;
 
 /**

@@ -37,11 +37,11 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import de.k3b.android.zip2saf.data.MountInfo;
 import de.k3b.android.zip2saf.databinding.FragmentMountinfoListBinding;
 import de.k3b.android.zip2saf.databinding.MountinfoListContentBinding;
 
-import de.k3b.android.zip2saf.data.MountInfoRepository;
+import de.k3b.zip2saf.data.MountInfo;
+import de.k3b.zip2saf.data.MountInfoRepository;
 
 /**
  * A fragment representing a list of Mounted Zip Files. This fragment

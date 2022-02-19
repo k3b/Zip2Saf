@@ -17,17 +17,18 @@
     this program. If not, see <http://www.gnu.org/licenses/>
     */
 
-package de.k3b.android.zip2saf.data;
+package de.k3b.zip2saf.data;
 
 import androidx.annotation.NonNull;
-
-import java.io.Serializable;
 
 /**
  * A data item representing a piece of content.
  */
-public class MountInfo implements Serializable {
+public class MountInfo  {
+    /** name of zip file without path. I.E: Test.zip */
     @NonNull public final String zipId;
+
+    /** full path/uri to zip file, result of {@link android.content.Intent#ACTION_OPEN_DOCUMENT} */
     @NonNull public final String uri;
     public final String details;
 

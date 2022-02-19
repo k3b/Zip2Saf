@@ -42,5 +42,6 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1'
     implementation 'androidx.navigation:navigation-fragment:2.4.1'
     implementation 'androidx.navigation:navigation-ui:2.4.1'
+    implementation 'com.google.code.gson:gson:2.9.0'
     testImplementation 'junit:junit:4.13.2'
 }
