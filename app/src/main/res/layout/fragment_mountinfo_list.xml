@@ -16,6 +16,6 @@
         android:layout_marginLeft="16dp"
         android:layout_marginRight="16dp"
         app:layoutManager="LinearLayoutManager"
-        tools:context="de.k3b.android.zip2saf.MountInfoDetailHostActivity"
+        tools:context="de.k3b.android.zip2saf.ManageMountsActivity"
         tools:listitem="@layout/mountinfo_list_content" />
 </androidx.constraintlayout.widget.ConstraintLayout>

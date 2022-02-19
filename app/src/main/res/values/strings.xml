@@ -20,7 +20,7 @@ this program. If not, see <http://www.gnu.org/licenses/>
 
 <resources>
     <string name="app_name">Zip Saf Reader</string>
-    <string name="title_activity_mount_info_detail_host">Zip Mount Settings</string>
+    <string name="title_activity_manage_mounts">Manage Mounted Zip Files</string>
     <string name="title_mountinfo_list">Zip Mounts</string>
     <string name="title_mountinfo_detail">Zip Mount Detail</string>
 

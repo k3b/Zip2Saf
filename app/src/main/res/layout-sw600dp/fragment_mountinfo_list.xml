@@ -24,7 +24,7 @@
         app:layout_constraintEnd_toStartOf="@id/guideline"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:context="de.k3b.android.zip2saf.MountInfoDetailHostActivity"
+        tools:context="de.k3b.android.zip2saf.ManageMountsActivity"
         tools:listitem="@layout/mountinfo_list_content" />
 
     <androidx.fragment.app.FragmentContainerView

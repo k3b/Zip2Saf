@@ -30,7 +30,8 @@ import androidx.navigation.ui.NavigationUI;
 import de.k3b.android.zip2saf.databinding.ActivityMountinfoDetailBinding;
 import de.k3b.android.zip2saf.widget.FilePermissionActivity;
 
-public class MountInfoDetailHostActivity extends FilePermissionActivity {
+/** @see {@link MountInfoListFragment} . */
+public class ManageMountsActivity extends FilePermissionActivity {
 
     @Override
     protected void onCreateEx(Bundle savedInstanceState) {

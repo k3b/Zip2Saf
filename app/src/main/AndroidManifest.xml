@@ -31,9 +31,9 @@ this program. If not, see <http://www.gnu.org/licenses/>
         android:supportsRtl="true"
         android:theme="@style/Theme.ZipSafReader">
         <activity
-            android:name=".MountInfoDetailHostActivity"
+            android:name=".ManageMountsActivity"
             android:exported="true"
-            android:label="@string/title_activity_mount_info_detail_host"
+            android:label="@string/title_activity_manage_mounts"
             android:resizeableActivity="true"
             tools:targetApi="24">
             <intent-filter>
