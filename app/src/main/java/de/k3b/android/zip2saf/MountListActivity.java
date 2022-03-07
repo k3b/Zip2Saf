@@ -26,9 +26,10 @@ public class MountListActivity extends FilePermissionActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == MountService.REQUEST_ROOT_DIR) {
-            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
-                Uri mountUri = data.getData();
+        if (requestCode == MountService.REQUEST_ZIP_FILE) {
+            Uri mountUri = (resultCode == Activity.RESULT_OK && data != null) ? data.getData() : null;
+            // Answer from {@link MountService#requestMount()}
+            if (mountUri != null) {
                 String zipID = mountService.getZipID(mountUri);
                 String errorMessage = mountService.mount(zipID, mountUri.toString());
                 if (errorMessage != null) {

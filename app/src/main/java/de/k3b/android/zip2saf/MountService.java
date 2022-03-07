@@ -13,7 +13,7 @@ import de.k3b.zip2saf.data.MountInfo;
 import de.k3b.zip2saf.data.MountInfoRepository;
 
 public class MountService {
-    public static final int REQUEST_ROOT_DIR = 2001;
+    public static final int REQUEST_ZIP_FILE = 2001;
 
     private final Activity activity;
     private final MountInfoRepository repository;
@@ -51,7 +51,7 @@ public class MountService {
                         | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("application/zip");
-        activity.startActivityForResult(intent, REQUEST_ROOT_DIR);
+        activity.startActivityForResult(intent, REQUEST_ZIP_FILE);
     }
 
     @NonNull
