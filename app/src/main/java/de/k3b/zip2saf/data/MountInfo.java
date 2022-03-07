@@ -19,29 +19,32 @@
 
 package de.k3b.zip2saf.data;
 
-import androidx.annotation.NonNull;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * A data item representing a piece of content. (android independant) .
+ * A data item representing a piece of content. (android independent) .
  */
 public class MountInfo  {
     /** name of zip file without path. I.E: Test.zip */
-    @NonNull public final String zipId;
+    @NotNull
+    public final String zipId;
 
     /** full path/uri to zip file, result of {@link android.content.Intent#ACTION_OPEN_DOCUMENT} */
-    @NonNull public final String uri;
-    public final String details;
+    @NotNull public final String uri;
+
+    @Nullable public final String details;
 
     public static final MountInfo EMPTY = new MountInfo("","","");
 
-    public MountInfo(@NonNull String zipId, @NonNull String uri, String details) {
+    public MountInfo(@NotNull String zipId, @NotNull String uri, @Nullable String details) {
         this.zipId = zipId;
         this.uri = uri;
         this.details = details;
     }
 
     @Override
-    @NonNull public String toString() {
+    @NotNull public String toString() {
         return zipId + "[" + uri + "]";
     }
 }

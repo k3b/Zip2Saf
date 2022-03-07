@@ -23,15 +23,15 @@ this program. If not, see <http://www.gnu.org/licenses/>
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
-    <application
-        android:allowBackup="true"
+    <application android:name=".Zip2SafApp"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ZipSafReader">
         <activity
-            android:name=".ManageMountsActivity"
+            android:name=".MountListActivity"
             android:exported="true"
             android:label="@string/title_activity_manage_mounts"
             android:resizeableActivity="true"

@@ -31,14 +31,23 @@ public class MountInfoRepositoryTest {
         MountInfoRepository repository = new MountInfoRepository(new ArrayList<>());
         repository.add(new MountInfo("my_id","my_url","my_details"));
 
-        assertEquals("[{'zipId':'my_id','uri':'my_url','details':'my_details'}]", repository.toString().replace('"', '\''));
+        assertEquals("[{'zipId':'[[add]]','uri':'','details':''},{'zipId':'my_id','uri':'my_url','details':'my_details'}]", repository.toString().replace('"', '\''));
     }
 
     @Test
     public void getById() {
         MountInfoRepository repository = MountInfoRepository.fromString ("[{'zipId':'my_id','uri':'my_url','details':'my_details'}]");
-        assertEquals(1, repository.getCount());
+        assertEquals(2, repository.getCount());
         assertNotNull(repository.getById("my_id"));
         assertNull(repository.getById("hallo"));
     }
+
+    @Test
+    public void fixCreateNewItem() {
+        MountInfoRepository repository = new MountInfoRepository(new ArrayList<>());
+        repository.add(new MountInfo("[[must fix]]","",""));
+        assertTrue("repair", repository.fixCreateNewItem());
+        assertFalse("already repearied", repository.fixCreateNewItem());
+    }
+
 }

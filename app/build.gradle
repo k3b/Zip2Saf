@@ -3,6 +3,7 @@ plugins {
 }
 
 android {
+    // 28 and higher required for androidX
     compileSdk 31
 
     defaultConfig {
@@ -34,14 +35,8 @@ android {
 
 dependencies {
 
-    implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
-    implementation 'com.google.android.material:material:1.5.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.4.1'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.1'
-    implementation 'androidx.navigation:navigation-fragment:2.4.1'
-    implementation 'androidx.navigation:navigation-ui:2.4.1'
     implementation 'com.google.code.gson:gson:2.9.0'
+    implementation 'org.jetbrains:annotations:15.0'
     testImplementation 'junit:junit:4.13.2'
 }

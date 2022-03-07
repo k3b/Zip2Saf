@@ -25,7 +25,7 @@ import android.preference.PreferenceManager;
 
 import de.k3b.zip2saf.data.MountInfoRepository;
 
-/** Add android specific persistence of android independant {@link MountInfoRepository} */
+/** Add android specific persistence of android independent {@link MountInfoRepository} */
 public class AndroidMountInfoRepositoryHelper {
 
     public static void saveRepository(Context context) {

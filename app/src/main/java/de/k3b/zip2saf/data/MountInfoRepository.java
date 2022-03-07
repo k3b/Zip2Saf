@@ -23,23 +23,35 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 /**
- * JSon based (android independant) in memory Repository implementation for {@link MountInfo} items.
+ * JSon based (android independent) in memory Repository implementation for {@link MountInfo} items.
  */
 public class MountInfoRepository {
     private static Gson gson = setPrettyPrinting(false);
     private static final Type LIST_TYPE = new TypeToken<ArrayList<MountInfo>>() {}.getType();
     private static MountInfoRepository instance = null;
+    @NotNull private static String createNewItemName = "[[add]]";
 
     private final List<MountInfo> ITEMS;
     private final HashMap<String, MountInfo> ID2MOUNT;
 
-    public static MountInfoRepository getInstance() {
+    /**
+     * Workaround to avoid dependency to android(-string-resources)
+     */
+    public static void init(@NotNull String createNewItemName) {
+        MountInfoRepository.createNewItemName = createNewItemName;
+    }
+
+    /** singleton */
+    @NotNull public static MountInfoRepository getInstance() {
         if (instance == null) {
             instance = new MountInfoRepository(new ArrayList<>());
             DemoDataGenerator.addDemoItems(instance, 25);
@@ -56,13 +68,15 @@ public class MountInfoRepository {
         return gson;
     }
 
-    protected MountInfoRepository(List<MountInfo> items) {
+    protected MountInfoRepository(@NotNull List<MountInfo> items) {
         ITEMS = items;
         ID2MOUNT = new HashMap<>();
         for (MountInfo item : ITEMS) {
             ID2MOUNT.put(item.zipId, item);
         }
         instance = this;
+
+        fixCreateNewItem();
     }
 
     protected static class DemoDataGenerator {
@@ -88,20 +102,29 @@ public class MountInfoRepository {
         }
     }
 
-    public void add(MountInfo item) {
-        ITEMS.add(item);
+    public void add(@NotNull MountInfo item) {
+        if (isSpecialItem(item)) {
+            ITEMS.add(0,item);
+        } else {
+            ITEMS.add(item);
+        }
         ID2MOUNT.put(item.zipId, item);
     }
 
-    public MountInfo getById(String s) {
+    public void remove(@NotNull MountInfo item) {
+        ITEMS.remove(item);
+        ID2MOUNT.remove(item.zipId);
+    }
+
+    @Nullable public MountInfo getById(String s) {
         return ID2MOUNT.get(s);
     }
 
-    public List<MountInfo> getAll() {
+    @NotNull public List<MountInfo> getAll() {
         return ITEMS;
     }
 
-    public MountInfo getByPosition(int position) {
+    @Nullable public MountInfo getByPosition(int position) {
         if (position < 0 || position >= getCount()) {
             return null;
         }
@@ -112,16 +135,40 @@ public class MountInfoRepository {
         return ITEMS.size();
     }
 
+    /**
+     * make shure that first item in repository is always "[[add]]" in the correct translation.
+     */
+    protected boolean fixCreateNewItem() {
+        MountInfo first = getByPosition(0);
+        boolean mustAdd = (first == null || !isSpecialItem(first));
+        if (first != null && isSpecialItem(first) && 0 != first.zipId.compareTo(createNewItemName) ) {
+            // wrong language translation
+            remove(first);
+            mustAdd = true;
+        }
+        if (mustAdd) {
+            add(new MountInfo(createNewItemName, "", ""));
+        }
+        return mustAdd;
+    }
+
+    private boolean isSpecialItem(@NotNull MountInfo item) {
+        return item.zipId.startsWith("[[");
+    }
+
+    /** persistance to json string */
     @Override
-    public String toString() {
+    @NotNull public String toString() {
         return gson.toJson(ITEMS);
     }
 
-    public String toString(MountInfo item) {
+    /** persistance to json string */
+    @NotNull public String toString(@NotNull MountInfo item) {
         return gson.toJson(item);
     }
 
-    public static MountInfoRepository fromString(String jsonData) {
+    /** persistance from json string */
+    @NotNull public static MountInfoRepository fromString(String jsonData) {
         return new MountInfoRepository(gson.fromJson(jsonData, LIST_TYPE));
     }
 }

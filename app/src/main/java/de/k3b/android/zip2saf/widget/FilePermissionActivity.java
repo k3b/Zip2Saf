@@ -21,6 +21,7 @@
 package de.k3b.android.zip2saf.widget;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -28,24 +29,23 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import de.k3b.android.zip2saf.R;
 
 /**
- * Manage permission in lifecycle for Android-6 ff {@link AppCompatActivity}
+ * Manage permission in lifecycle for Android-6 ff {@link Activity}
  * * read from external-storage
  * <p>
  * implemented in {@link #onCreate(Bundle)}
  * when done executes in {@link #onCreateEx(Bundle)} in inherited class
  * <p>
  * how to use:
- * * In all activities replace ".... extends {@link AppCompatActivity} with extends {@link FilePermissionActivity}
+ * * In all activities replace ".... extends {@link Activity} with extends {@link FilePermissionActivity}
  * * rename {@link #onCreate(Bundle)} to {@link #onCreateEx(Bundle)}
  * * make shure that in onCreateEx() that there is no call to super.onCreate()
  */
-public abstract class FilePermissionActivity extends AppCompatActivity {
+public abstract class FilePermissionActivity extends Activity {
     public static final String TAG = "k3b.FilePermAct";
 
     private static final int REQUEST_ID_READ_EXTERNAL_STORAGE = 2000;
