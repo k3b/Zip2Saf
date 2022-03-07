@@ -152,7 +152,7 @@ public class MountInfoRepository {
         return mustAdd;
     }
 
-    private boolean isSpecialItem(@NotNull MountInfo item) {
+    public boolean isSpecialItem(@NotNull MountInfo item) {
         return item.zipId.startsWith("[[");
     }
 

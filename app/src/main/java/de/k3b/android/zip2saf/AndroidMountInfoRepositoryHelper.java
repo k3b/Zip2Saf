@@ -23,21 +23,26 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
+import org.jetbrains.annotations.NotNull;
+
 import de.k3b.zip2saf.data.MountInfoRepository;
 
 /** Add android specific persistence of android independent {@link MountInfoRepository} */
 public class AndroidMountInfoRepositoryHelper {
+    public static void saveRepository(@NotNull Context context) {
+        saveRepository(context, MountInfoRepository.getInstance());
+    }
 
-    public static void saveRepository(Context context) {
+    public static void saveRepository(@NotNull Context context, @NotNull MountInfoRepository repository) {
         SharedPreferences prefsInstance = PreferenceManager.getDefaultSharedPreferences(context);
 
         prefsInstance
                 .edit()
-                .putString("mounts", MountInfoRepository.getInstance().toString())
+                .putString("mounts", repository.toString())
                 .apply();
     }
 
-    public static void loadRepository(Context context) {
+    public static void loadRepository(@NotNull Context context) {
         SharedPreferences prefsInstance = PreferenceManager.getDefaultSharedPreferences(context);
 
         String json = prefsInstance.getString("mounts","[]");

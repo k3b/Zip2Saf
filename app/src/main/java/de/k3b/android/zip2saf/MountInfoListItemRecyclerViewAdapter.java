@@ -22,7 +22,6 @@ package de.k3b.android.zip2saf;
 import android.content.ClipData;
 import android.content.ClipDescription;
 import android.os.Build;
-import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +31,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
 import de.k3b.android.zip2saf.databinding.MountinfoListContentBinding;
 import de.k3b.zip2saf.data.MountInfo;
 import de.k3b.zip2saf.data.MountInfoRepository;
@@ -39,18 +42,12 @@ import de.k3b.zip2saf.data.MountInfoRepository;
 public class MountInfoListItemRecyclerViewAdapter
         extends RecyclerView.Adapter<MountInfoListItemRecyclerViewAdapter.ViewHolder> {
 
-    /**
-     * The fragment argument representing the item ID that this fragment
-     * represents.
-     */
-    public static final String ARG_ITEM_ID = "item_id";
     private final MountInfoRepository mRepository;
-    private final View mItemDetailFragmentContainer;
+    private final OnClickHandler onClickHandler;
 
-    MountInfoListItemRecyclerViewAdapter(MountInfoRepository repository,
-                                         View itemDetailFragmentContainer) {
+    MountInfoListItemRecyclerViewAdapter(MountInfoRepository repository, OnClickHandler onClickHandler) {
         this.mRepository = repository;
-        mItemDetailFragmentContainer = itemDetailFragmentContainer;
+        this.onClickHandler = onClickHandler;
     }
 
     @NonNull
@@ -68,13 +65,16 @@ public class MountInfoListItemRecyclerViewAdapter
         final MountInfo mountInfo = getByPosition(position);
         holder.mZipIdView.setText(mountInfo.zipId);
 
+        try {
+            holder.mFullPath.setText(URLDecoder.decode(mountInfo.uri, StandardCharsets.UTF_8.toString()));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            holder.mFullPath.setText(mountInfo.uri);
+        }
+
         holder.itemView.setTag(mountInfo);
         holder.itemView.setOnClickListener(itemView -> {
-            MountInfo item =
-                    (MountInfo) itemView.getTag();
-            Bundle arguments = new Bundle();
-            arguments.putString(ARG_ITEM_ID, item.zipId);
-            handleNavigation(mItemDetailFragmentContainer, itemView, arguments);
+            onClickHandler.onListClick((MountInfo) itemView.getTag());
         });
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             /*
@@ -122,9 +122,6 @@ public class MountInfoListItemRecyclerViewAdapter
         });
     }
 
-    protected void handleNavigation(View fragment, View itemView, Bundle arguments) {
-    }
-
     @NonNull
     private MountInfo getByPosition(int position) {
         MountInfo mountInfo = mRepository.getByPosition(position);
@@ -140,11 +137,17 @@ public class MountInfoListItemRecyclerViewAdapter
     class ViewHolder extends RecyclerView.ViewHolder {
         // final TextView mPositionView;
         final TextView mZipIdView;
+        final TextView mFullPath;
 
         ViewHolder(MountinfoListContentBinding binding) {
             super(binding.getRoot());
             mZipIdView = binding.zipId;
+            mFullPath = binding.fullPath;
         }
 
+    }
+
+    public interface OnClickHandler {
+        void onListClick(MountInfo item);
     }
 }

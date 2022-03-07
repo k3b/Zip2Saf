@@ -29,4 +29,5 @@ this program. If not, see <http://www.gnu.org/licenses/>
     <!-- special list-item used as placeholder to add a new item. Must start with "[[" -->
     <string name="title_mountinfo_new_item">[[add new]]</string>
 
+    <string name="zip_already_mounted_error">Zip file is already mounted.</string>
 </resources>
