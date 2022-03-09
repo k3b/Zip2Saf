@@ -22,6 +22,7 @@ package de.k3b.android.zip2saf;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.provider.DocumentsContract;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -47,5 +48,8 @@ public class AndroidMountInfoRepositoryHelper {
 
         String json = prefsInstance.getString("mounts","[]");
         MountInfoRepository.fromString(json);
+        context.getContentResolver()
+                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
+
     }
 }

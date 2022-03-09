@@ -3,6 +3,7 @@ package de.k3b.android.zip2saf;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.provider.DocumentsContract;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -40,9 +41,16 @@ public class MountService {
                 requestMount();
             } else {
                 repository.remove(item);
-                adapter.notifyDataSetChanged();
+                notifyChange();
             }
         }
+    }
+
+    private void notifyChange() {
+        adapter.notifyDataSetChanged();
+        activity.getContentResolver()
+                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
+        AndroidMountInfoRepositoryHelper.saveRepository(activity.getApplicationContext(), repository);
     }
 
     public void requestMount() {
@@ -67,10 +75,11 @@ public class MountService {
     public String mount(@NotNull String zipID, @NotNull String uri) {
         if (repository.getById(zipID) == null) {
             // new MountInfo("added", "path/to/added", "added details")
-            MountInfo mountInfo = new MountInfo(zipID, uri, "");
+            MountInfo mountInfo = new MountInfo(zipID, uri, null);
             this.repository.add(mountInfo);
-            AndroidMountInfoRepositoryHelper.saveRepository(this.activity, this.repository);
-            adapter.notifyDataSetChanged();
+            AndroidMountInfoRepositoryHelper.saveRepository(this.activity.getApplicationContext(), this.repository);
+            notifyChange();
+
             return null;
         } else {
             return activity.getString(R.string.zip_already_mounted_error);

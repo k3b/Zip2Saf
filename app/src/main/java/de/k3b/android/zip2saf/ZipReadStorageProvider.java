@@ -62,12 +62,10 @@ import de.k3b.zip2saf.data.MountInfo;
 import de.k3b.zip2saf.data.MountInfoRepository;
 
 public class ZipReadStorageProvider extends DocumentsProvider {
-    public static final String TAG = "k3b.ZipSafProv" ;
-    private static final String PATH_DELIMITER = "/";
+    /** debug= false : do not log.info() what the app is doing */
     public static boolean debug = true;
 
-    /** load on demand via getRepository() */
-    private static MountInfoRepository repository = null;
+    public static final String TAG = "k3b.ZipSafProv" ;
 
     /**
      * Default root projection: everything but Root.COLUMN_MIME_TYPES, Root.COLUMN_SUMMARY, Root.COLUMN_AVAILABLE_BYTES
@@ -125,18 +123,18 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public Cursor queryRoots(final String[] projection) {
-        if (debug) Log.i(TAG, "queryRoots");
+        log("queryRoots");
 
         if (getContext() == null || ContextCompat.checkSelfPermission(getContext(),
                 Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            if (debug) Log.i(TAG, "queryRoots no read permissions");
+            log("queryRoots no read permissions");
             return null;
         }
         // Create a cursor with either the requested fields, or the default projection if "projection" is null.
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_ROOT_PROJECTION);
 
         // Add Home directories
-        MountInfoRepository repository = getRepository();
+        MountInfoRepository repository = Zip2SafHelper.getRepository();
 
         for (MountInfo mountInfo : repository.getAll()) {
             if (!repository.isSpecialItem(mountInfo)) {
@@ -145,8 +143,10 @@ public class ZipReadStorageProvider extends DocumentsProvider {
                 row.add(Root.COLUMN_ROOT_ID, mountInfo.zipId);
                 row.add(Root.COLUMN_DOCUMENT_ID, mountInfo.zipId);
                 row.add(Root.COLUMN_TITLE, mountInfo.zipId);
-                row.add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY | Root.FLAG_SUPPORTS_SEARCH |
-                        Root.FLAG_SUPPORTS_IS_CHILD | Root.FLAG_SUPPORTS_EJECT);
+                row.add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY
+                        // | Root.FLAG_SUPPORTS_SEARCH
+                        | Root.FLAG_SUPPORTS_IS_CHILD
+                        | Root.FLAG_SUPPORTS_EJECT);
                 row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher);
             }
         }
@@ -162,14 +162,16 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public void ejectRoot(String rootId) {
-        if (debug) Log.i(TAG, "ejectRoot " + rootId);
-        MountInfo mountInfo = getMountInfo(rootId);
+        log("ejectRoot " + rootId);
+        MountInfo mountInfo = Zip2SafHelper.getMountInfo(rootId);
         if (mountInfo == null)  throw new IllegalStateException("Eject: Root " + rootId + " not found");
 
-        getRepository().remove(mountInfo);
+        MountInfoRepository repository = Zip2SafHelper.getRepository();
+        repository.remove(mountInfo);
 
         getContext().getContentResolver()
                 .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
+        AndroidMountInfoRepositoryHelper.saveRepository(getContext().getApplicationContext(), repository);
     }
 
     /**
@@ -186,7 +188,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public String createDocument(final String parentDocumentId, final String mimeType,
             final String displayName) {
-        if (debug) Log.i(TAG, "not implemented createDocument(" + parentDocumentId + "," + mimeType + "," + displayName + ")");
+        log("not implemented createDocument(" + parentDocumentId + "," + mimeType + "," + displayName + ")");
         return null;
     }
 
@@ -211,7 +213,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public AssetFileDescriptor openDocumentThumbnail(final String documentId, final Point sizeHint,
                                                      final CancellationSignal signal) throws FileNotFoundException {
-        if (debug) Log.i(TAG, "openDocumentThumbnail(" + documentId +"," + sizeHint + ")");
+        log("openDocumentThumbnail(" + documentId +"," + sizeHint + ")");
 
         if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "openDocumentThumbnail")) {
             return null;
@@ -236,6 +238,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
             }
         }
         options.inJustDecodeBounds = false;
+        // !!!
         Bitmap bitmap = BitmapFactory.decodeFile(documentId, options);
         // Write out the thumbnail to a temporary file
         File tempFile;
@@ -271,9 +274,9 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public boolean isChildDocument(final String parentDocumentId, final String documentId) {
-        if (debug) Log.i(TAG, "isChildDocument(" + parentDocumentId + "," + documentId + ")");
-
-        return documentId.startsWith(getDirectoryID(parentDocumentId));
+        boolean result = documentId.startsWith(Zip2SafHelper.getDirectoryID(parentDocumentId));
+        log("isChildDocument(" + parentDocumentId + "," + documentId + ") ==> " + result);
+        return result;
     }
 
     /**
@@ -305,7 +308,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public Cursor queryChildDocuments(final String parentDocumentId, final String[] projection,
             final String sortOrder) {
-        if (debug) Log.i(TAG, "queryChildDocuments " + parentDocumentId);
+        log("queryChildDocuments(" + parentDocumentId+ ",sort=" + sortOrder + ")");
 
         if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "queryChildDocuments")) {
             return null;
@@ -313,15 +316,15 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         // Create a cursor with either the requested fields, or the default projection if "projection" is null.
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
         LocalFileHeader localFileHeader;
-        MountInfo mountInfo = getRepository().getById(getRootId(parentDocumentId));
+        MountInfo mountInfo = Zip2SafHelper.getRepository().getById(Zip2SafHelper.getRootId(parentDocumentId));
         try (ZipInputStream zipInputStream = getZipInputStream(parentDocumentId, mountInfo)){
-           String dir = getDirectoryID(getZipPath(parentDocumentId));
+           String dir = Zip2SafHelper.getDirectoryID(Zip2SafHelper.getZipPath(parentDocumentId));
             Set<String> duplicates = new HashSet<>();
            while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
                includeLocalFileHeader(result, mountInfo.zipId, dir, localFileHeader, duplicates);
            }
         } catch (IOException ioException) {
-            Log.e(TAG, "queryChildDocuments " + parentDocumentId + " " + ioException.getMessage(), ioException);
+            Log.e(TAG, "queryChildDocuments(" + parentDocumentId+ ",sort=" + sortOrder + ") : " + ioException.getMessage(), ioException);
         }
         return result;
     }
@@ -338,7 +341,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public Cursor queryDocument(final String documentId, final String[] projection) {
-        if (debug) Log.i(TAG, "queryDocument " + documentId);
+        log("queryDocument " + documentId);
 
         if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "queryDocument")) {
             return null;
@@ -347,12 +350,17 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
 
         LocalFileHeader localFileHeader;
-        MountInfo mountInfo = getRepository().getById(getRootId(documentId));
+        MountInfo mountInfo = Zip2SafHelper.getRepository().getById(Zip2SafHelper.getRootId(documentId));
         try (ZipInputStream zipInputStream = getZipInputStream(documentId, mountInfo)){
-            String zipPath = getZipPath(documentId);
-            while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
-                if (zipPath.equals(localFileHeader.getFileName())) {
-                    includeLocalFileHeader(result, mountInfo.zipId, zipPath, localFileHeader, null);
+            String zipPath = Zip2SafHelper.getZipPath(documentId);
+            if (zipPath.isEmpty()) {
+                // special case: root dir
+                includeDir(result,mountInfo.zipId,"","");
+            } else {
+                while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
+                    if (zipPath.equals(localFileHeader.getFileName())) {
+                        includeLocalFileHeader(result, mountInfo.zipId, zipPath, localFileHeader, null);
+                    }
                 }
             }
         } catch (IOException ioException) {
@@ -361,13 +369,40 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         return result;
     }
 
+    private void log(String msg) {
+        if (debug) {
+            Log.i(TAG, msg);
+        }
+    }
+
+    private InputStream openZipEntryInputStream(final String documentId, String debugContext) {
+        LocalFileHeader localFileHeader;
+        MountInfo mountInfo = Zip2SafHelper.getRepository().getById(Zip2SafHelper.getRootId(documentId));
+        ZipInputStream zipInputStream = null;
+        try {
+            zipInputStream = getZipInputStream(documentId, mountInfo);
+            String zipPath = Zip2SafHelper.getZipPath(documentId);
+            while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
+                if (zipPath.equals(localFileHeader.getFileName())) {
+                    // found: close is done outside
+                    return zipInputStream;
+                }
+            }
+        } catch (IOException ioException) {
+            Log.e(TAG, "openZipEntryInputStream " + documentId + ": " + ioException.getMessage(), ioException);
+        }
+        // not found: close zip file
+        closeSilently(zipInputStream, debugContext + "-openZipEntryInputStream '" + documentId + "': entry not found");
+        return null;
+    }
+
     /** to allow unittests without an existing zip file */
     void includeLocalFileHeader(MatrixCursor result, String zipId, String dir, LocalFileHeader localFileHeader, Set<String> alreadyIncluded) {
-        String relPath = getRelPath(localFileHeader, dir);
+        String relPath = Zip2SafHelper.getRelPath(localFileHeader, dir);
         if (relPath != null) {
             boolean isDirectory = localFileHeader.isDirectory();
             int end;
-            if (!isDirectory && (end = relPath.indexOf(PATH_DELIMITER) + 1) > 0) {
+            if (!isDirectory && (end = relPath.indexOf(Zip2SafHelper.PATH_DELIMITER) + 1) > 0) {
                 isDirectory = true;
                 relPath = relPath.substring(0,end);
             }
@@ -383,7 +418,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     }
 
     private void includeDir(final MatrixCursor result, @NonNull String zipId, String dirNameWithoutPath,String zipDirPath) {
-        includeResult(result, dirNameWithoutPath, getDocumentId(zipId, zipDirPath), MIME_TYPE_DIR, null, null, 0);
+        includeResult(result, dirNameWithoutPath, Zip2SafHelper.getDocumentId(zipId, zipDirPath), MIME_TYPE_DIR, null, null, 0);
     }
 
     private void includeFile(final MatrixCursor result, @NonNull String zipId, final LocalFileHeader file, String filenameWithoutPath) {
@@ -400,7 +435,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         if (mimeType.startsWith("image/"))
             flags |= Document.FLAG_SUPPORTS_THUMBNAIL;
 
-        includeResult(result, filenameWithoutPath, getDocumentId(zipId, file.getFileName()), mimeType, file.getLastModifiedTime(), file.getUncompressedSize(), flags);
+        includeResult(result, filenameWithoutPath, Zip2SafHelper.getDocumentId(zipId, file.getFileName()), mimeType, file.getLastModifiedTime(), file.getUncompressedSize(), flags);
     }
 
     void includeResult(MatrixCursor result, String filenameWithoutPath, String documentId,
@@ -433,7 +468,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public String getDocumentType(final String documentId) {
         String mime = getDocumentTypeImpl(documentId);
-        if (debug) Log.i(TAG, "getDocumentType " + documentId + " => " + mime);
+        log("getDocumentType " + documentId + " => " + mime);
         return mime;
     }
 
@@ -441,13 +476,10 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "getDocumentType")) {
             return null;
         }
-        File file = new File(documentId);
-        if (file.isDirectory())
-            return MIME_TYPE_DIR;
         // From FileProvider.getType(Uri)
-        final int lastDot = file.getName().lastIndexOf('.');
+        final int lastDot = documentId.lastIndexOf('.');
         if (lastDot >= 0) {
-            final String extension = file.getName().substring(lastDot + 1);
+            final String extension = documentId.substring(lastDot + 1);
             final String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
             if (mime != null) {
                 return mime;
@@ -463,7 +495,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public void deleteDocument(final String documentId) {
-        if (debug) Log.i(TAG, "not implemented deleteDocument " + documentId);
+        log("not implemented deleteDocument " + documentId);
 
         return;
     }
@@ -482,7 +514,7 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public String renameDocument(final String documentId, final String displayName) throws FileNotFoundException {
-        if (debug) Log.i(TAG, "not implemented renameDocument " + documentId);
+        log("not implemented renameDocument " + documentId);
         return null;
     }
 
@@ -509,16 +541,14 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public ParcelFileDescriptor openDocument(final String documentId, final String mode,
                                              final CancellationSignal signal) throws FileNotFoundException {
-        if (debug) Log.i(TAG, "openDocument " + documentId);
+        log("openDocument " + documentId);
 
         if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "openDocument")) {
             return null;
         }
-        File file = new File(documentId);
 
-
-        // return createPipeDescriptor(null, "openDocument " + documentId);
-        return ParcelFileDescriptor.open(file, ParcelFileDescriptor.parseMode(mode));
+        InputStream is = openZipEntryInputStream(documentId, "openDocument");
+        return createPipeDescriptor(is, "openDocument "+ documentId);
     }
 
     // https://stackoverflow.com/questions/18212152/transfer-inputstream-to-another-service-across-process-boundaries-with-parcelf
@@ -543,13 +573,14 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         return null;
     }
 
-    protected void closeSilently(Closeable stream, Object dbgContext) {
+    protected static void closeSilently(Closeable stream, Object dbgContext) {
         if (stream != null) {
             try { stream.close(); } catch (IOException e1) {
                 Log.e(TAG, "closeSilently " + dbgContext.toString(), e1 );
             }
         }
     }
+
     /**
      * Implement this to initialize your content provider on startup. This method is called for
      * all registered content providers on the application main thread at application launch time.
@@ -565,100 +596,17 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      */
     @Override
     public boolean onCreate() {
-        if (debug) Log.i(TAG, "onCreate");
+        log("onCreate");
         return true;
-    }
-
-    //--------------
-    private static String getRelPath(LocalFileHeader localFileHeader, String zipParentDir) {
-        String zipPath = (localFileHeader != null) ? localFileHeader.getFileName() : null;
-        return getRelPath(zipPath, zipParentDir);
-    }
-
-    /** @return zipPath without zipParentDir or null, if zipPath is not below zipParentDir. */
-    @Nullable static String getRelPath(String zipPath, String zipParentDir) {
-        if (zipPath != null && zipPath.startsWith(zipParentDir)) return zipPath.substring(zipParentDir.length());
-        return null;
-    }
-
-    private static MountInfoRepository getRepository() {
-        if (repository == null) {
-            repository = MountInfoRepository.getInstance();
-        }
-        return repository;
-    }
-
-    @Nullable
-    private static MountInfo getMountInfo(String documentId) {
-        if (documentId == null) return null;
-        return getRepository().getById(getRootId(documentId));
-    }
-
-    private String getDocumentId(String zipId, String fileName) {
-        return zipId + PATH_DELIMITER + fileName;
-    }
-
-    /**
-     * @return zipID without pathInsideZip. null if error
-     */
-    static String getRootId(String documentId) {
-        if ((documentId == null) || (documentId.isEmpty())) return null;
-
-        if (documentId.startsWith(PATH_DELIMITER)) return getRootId(documentId.substring(1));
-
-        String result = documentId;
-        int end = documentId.indexOf(PATH_DELIMITER);
-        if (end >= 0) result = documentId.substring(0,end);
-        if (debug) Log.i(TAG, "getRootId(" + documentId + ") => " + result);
-        return result;
-    }
-
-    /**
-     * @return pathInsideZip without zipID. "" if root
-     */
-    static String getZipPath(String documentId) {
-        String result = "";
-        if ((documentId != null) && (!documentId.isEmpty())) {
-
-            if (documentId.startsWith(PATH_DELIMITER)) return getZipPath(documentId.substring(1));
-            int begin = documentId.indexOf(PATH_DELIMITER) + 1;
-
-            if (begin > 1 && documentId.length() > begin) {
-                result = documentId.substring(begin);
-            }
-        }
-        if (debug) Log.i(TAG, "getZipPath(" + documentId + ") => " + result);
-        return result;
-    }
-
-    @NonNull
-    static String getDirectoryID(@Nullable String parentDocumentId) {
-        if (parentDocumentId == null) return "";
-        if (parentDocumentId.length() > 0 && !parentDocumentId.endsWith(PATH_DELIMITER)) {
-            return parentDocumentId + PATH_DELIMITER;
-        }
-        return parentDocumentId;
     }
 
     @NonNull
     private ZipInputStream getZipInputStream(String documentId, MountInfo mountInfo) throws FileNotFoundException {
         if (mountInfo != null) {
             InputStream inputStream = getContext().getContentResolver().openInputStream(Uri.parse(mountInfo.uri));
-            return getZipInputStream(inputStream);
+            return Zip2SafHelper.getZipInputStream(inputStream, mountInfo.password);
         }
         throw new FileNotFoundException(documentId);
-    }
-
-    @NonNull
-    private ZipInputStream getZipInputStream(InputStream inputStream) {
-        return new ZipInputStream(inputStream);
-    }
-
-
-    @NonNull
-    private static char[] getPasswordChars(MountInfo mountInfo) {
-        if (mountInfo.password == null) return null;
-        return mountInfo.password.toCharArray();
     }
 
 }

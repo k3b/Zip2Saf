@@ -54,7 +54,7 @@ public class MountInfoRepository {
     @NotNull public static MountInfoRepository getInstance() {
         if (instance == null) {
             instance = new MountInfoRepository(new ArrayList<>());
-            DemoDataGenerator.addDemoItems(instance, 25);
+            // DemoDataGenerator.addDemoItems(instance, 25);
         }
         return instance;
     }

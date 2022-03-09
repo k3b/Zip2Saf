@@ -30,48 +30,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ZipReadStorageProviderTest {
-
-    @Test
-    public void getRootId() {
-        ZipReadStorageProvider.debug = false; // no logcat output
-        assertEquals("root", ZipReadStorageProvider.getRootId("/root/path/file"));
-        assertEquals("root", ZipReadStorageProvider.getRootId("root/path/file"));
-        assertEquals("root", ZipReadStorageProvider.getRootId("root/"));
-        assertEquals("root", ZipReadStorageProvider.getRootId("root"));
-        assertEquals(null, ZipReadStorageProvider.getRootId(""));
-        assertEquals(null, ZipReadStorageProvider.getRootId(null));
-    }
-
-    @Test
-    public void getZipPath() {
-        ZipReadStorageProvider.debug = false; // no logcat output
-        assertEquals("path/file", ZipReadStorageProvider.getZipPath("/root/path/file"));
-        assertEquals("path/file", ZipReadStorageProvider.getZipPath("root/path/file"));
-        assertEquals("", ZipReadStorageProvider.getZipPath("root/"));
-        assertEquals("", ZipReadStorageProvider.getZipPath("root"));
-        assertEquals("", ZipReadStorageProvider.getZipPath(""));
-        assertEquals("", ZipReadStorageProvider.getZipPath(null));
-    }
-
-    @Test
-    public void getDirectoryID() {
-        assertEquals("", ZipReadStorageProvider.getDirectoryID(null));
-        assertEquals("", ZipReadStorageProvider.getDirectoryID(""));
-        assertEquals("dir/", ZipReadStorageProvider.getDirectoryID("dir"));
-        assertEquals("dir/", ZipReadStorageProvider.getDirectoryID("dir/"));
-    }
-
-    @Test
-    public void getRelPath() {
-        assertEquals("file.ext",ZipReadStorageProvider.getRelPath("file.ext", ""));
-
-        assertEquals("file.ext",ZipReadStorageProvider.getRelPath("path/file.ext", "path/"));
-
-        assertEquals(null,ZipReadStorageProvider.getRelPath("path/file.ext", "path/subdir/"));
-
-        assertEquals("subdir/file.ext",ZipReadStorageProvider.getRelPath("path/subdir/file.ext", "path/"));
-    }
-
     /** same as ZipReadStorageProvider
      * but without android depedencies
      * and with special includeResult()

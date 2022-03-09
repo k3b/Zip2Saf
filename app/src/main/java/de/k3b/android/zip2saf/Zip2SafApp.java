@@ -9,5 +9,6 @@ public class Zip2SafApp extends Application {
     public void onCreate() {
         super.onCreate();
         MountInfoRepository.init(getString(R.string.title_mountinfo_new_item));
+        AndroidMountInfoRepositoryHelper.loadRepository(this);
     }
 }

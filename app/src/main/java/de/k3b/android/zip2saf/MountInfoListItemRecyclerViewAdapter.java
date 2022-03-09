@@ -31,10 +31,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-
 import de.k3b.android.zip2saf.databinding.MountinfoListContentBinding;
 import de.k3b.zip2saf.data.MountInfo;
 import de.k3b.zip2saf.data.MountInfoRepository;
@@ -65,12 +61,8 @@ public class MountInfoListItemRecyclerViewAdapter
         final MountInfo mountInfo = getByPosition(position);
         holder.mZipIdView.setText(mountInfo.zipId);
 
-        try {
-            holder.mFullPath.setText(URLDecoder.decode(mountInfo.uri, StandardCharsets.UTF_8.toString()));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            holder.mFullPath.setText(mountInfo.uri);
-        }
+        String path = Zip2SafHelper.decodeDocumentId(mountInfo.uri);
+        holder.mFullPath.setText(path);
 
         holder.itemView.setTag(mountInfo);
         holder.itemView.setOnClickListener(itemView -> {
