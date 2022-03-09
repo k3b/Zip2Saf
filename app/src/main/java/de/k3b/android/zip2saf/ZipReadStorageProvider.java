@@ -238,12 +238,13 @@ public class ZipReadStorageProvider extends DocumentsProvider {
             }
         }
         options.inJustDecodeBounds = false;
-        // !!!
-        Bitmap bitmap = BitmapFactory.decodeFile(documentId, options);
-        // Write out the thumbnail to a temporary file
         File tempFile;
         FileOutputStream out = null;
+        InputStream inputStream = null;
+        // !!!
         try {
+            inputStream = openZipEntryInputStream(documentId,"create thumbnail from openDocumentThumbnail " + documentId);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream,null, options);
             tempFile = File.createTempFile("thumbnail", null, getContext().getCacheDir());
             out = new FileOutputStream(tempFile);
             bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
@@ -252,7 +253,8 @@ public class ZipReadStorageProvider extends DocumentsProvider {
                     " Error writing thumbnail", e);
             return null;
         } finally {
-            closeSilently(out,  "Error closing thumbnail");
+            closeSilently(inputStream,  "Error closing thumbnail original");
+            closeSilently(out,  "Error closing thumbnail generated thumbnail");
         }
         // It appears the Storage Framework UI caches these results quite aggressively so there is little reason to
         // write your own caching layer beyond what you need to return a single AssetFileDescriptor
