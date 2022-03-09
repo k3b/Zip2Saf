@@ -26,21 +26,21 @@ import org.jetbrains.annotations.Nullable;
  * A data item representing a piece of content. (android independent) .
  */
 public class MountInfo  {
-    /** name of zip file without path. I.E: Test.zip */
+    /** name of zip file without path. I.E: "Test.zip" */
     @NotNull
     public final String zipId;
 
     /** full path/uri to zip file, result of {@link android.content.Intent#ACTION_OPEN_DOCUMENT} */
     @NotNull public final String uri;
 
-    @Nullable public final String details;
+    @Nullable public final String password;
 
-    public static final MountInfo EMPTY = new MountInfo("","","");
+    public static final MountInfo EMPTY = new MountInfo("","",null);
 
-    public MountInfo(@NotNull String zipId, @NotNull String uri, @Nullable String details) {
+    public MountInfo(@NotNull String zipId, @NotNull String uri, @Nullable String password) {
         this.zipId = zipId;
         this.uri = uri;
-        this.details = details;
+        this.password = password;
     }
 
     @Override

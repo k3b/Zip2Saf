@@ -29,14 +29,19 @@ public class MountInfoRepositoryTest {
     @Test
     public void testToString() {
         MountInfoRepository repository = new MountInfoRepository(new ArrayList<>());
-        repository.add(new MountInfo("my_id","my_url","my_details"));
+        repository.add(new MountInfo("my_id","my_url","my_password"));
 
-        assertEquals("[{'zipId':'[[add]]','uri':'','details':''},{'zipId':'my_id','uri':'my_url','details':'my_details'}]", repository.toString().replace('"', '\''));
+        String expected = "[" +
+                "{'zipId':'[[add]]','uri':'','password':''}," +
+                "{'zipId':'my_id','uri':'my_url','password':'my_password'}" +
+                "]";
+        assertEquals(expected, repository.toString().replace('"', '\''));
     }
 
     @Test
     public void getById() {
-        MountInfoRepository repository = MountInfoRepository.fromString ("[{'zipId':'my_id','uri':'my_url','details':'my_details'}]");
+        MountInfoRepository repository = MountInfoRepository.fromString (
+                "[{'zipId':'my_id','uri':'my_url','password':'my_password'}]");
         assertEquals(2, repository.getCount());
         assertNotNull(repository.getById("my_id"));
         assertNull(repository.getById("hallo"));

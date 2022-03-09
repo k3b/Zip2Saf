@@ -111,12 +111,17 @@ public class MountInfoRepository {
         ID2MOUNT.put(item.zipId, item);
     }
 
-    public void remove(@NotNull MountInfo item) {
-        ITEMS.remove(item);
+    /**
+     * @return true if successfull removed. false if not found
+     */
+    public boolean remove(@NotNull MountInfo item) {
+        boolean result = ITEMS.remove(item);
         ID2MOUNT.remove(item.zipId);
+        return result;
     }
 
     @Nullable public MountInfo getById(String s) {
+        if (s == null) return null;
         return ID2MOUNT.get(s);
     }
 
