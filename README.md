@@ -19,15 +19,3 @@ For details see similar apps
 * mount network shares: https://f-droid.org/en/packages/com.wa2c.android.cifsdocumentsprovider/
 ----------------
 
-        <provider
-            android:name="me.alexbakker.webdav.provider.WebDavProvider"
-            android:authorities="${providerAuthority}"
-            android:grantUriPermissions="true"
-            android:exported="true"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
-            <intent-filter>
-                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
-            </intent-filter>
-        </provider>
-
-------------

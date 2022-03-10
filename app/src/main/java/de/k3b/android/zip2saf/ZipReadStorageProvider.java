@@ -32,6 +32,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.net.Uri;
+import android.os.Build;
 import android.os.CancellationSignal;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
@@ -83,8 +84,8 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      * Check to see if we are missing the Storage permission group. In those cases, we cannot
      * access local files and must invalidate any root URIs currently available.
      *
-     * @param context The current Context
-     * @param debugContext
+     * @param context      The current Context
+     * @param debugContext why this method was called
      * @return whether the permission has been granted it is safe to proceed
      */
     static boolean isMissingReadPermission(@Nullable Context context, String debugContext) {
@@ -105,6 +106,56 @@ public class ZipReadStorageProvider extends DocumentsProvider {
             return true;
         }
         return false;
+    }
+
+    protected static void closeSilently(Closeable stream, Object dbgContext) {
+        if (stream != null) {
+            try {
+                stream.close();
+            } catch (IOException e1) {
+                Log.e(TAG, "closeSilently " + dbgContext.toString(), e1);
+            }
+        }
+    }
+
+
+    /**
+     * Ejects the root. Throws {@link IllegalStateException} if ejection failed.
+     *
+     * @param rootId the root to be ejected.
+     * @see Root#FLAG_SUPPORTS_EJECT
+     */
+    @Override
+    public void ejectRoot(String rootId) {
+        log("ejectRoot " + rootId);
+        MountInfo mountInfo = Zip2SafHelper.getMountInfo(rootId);
+        if (mountInfo == null)
+            throw new IllegalStateException("Eject: Root " + rootId + " not found");
+
+        MountInfoRepository repository = Zip2SafHelper.getRepository();
+        repository.remove(mountInfo);
+
+        getContext().getContentResolver()
+                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
+        AndroidMountInfoRepositoryHelper.saveRepository(getContext().getApplicationContext(), repository);
+    }
+
+    /**
+     * Create a new document and return its newly generated DocumentsContract.Document.COLUMN_DOCUMENT_ID.
+     * You must allocate a new DocumentsContract.Document.COLUMN_DOCUMENT_ID to represent the
+     * document, which must not change once returned.
+     *
+     * @param parentDocumentId the parent directory to create the new document under.
+     * @param mimeType         the concrete MIME type associated with the new document. If the MIME type is not supported, the provider must throw.
+     * @param displayName      the display name of the new document. The provider may alter this name to meet any internal constraints, such as avoiding conflicting names.
+     * @return new created documentID.
+     * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
+     */
+    @Override
+    public String createDocument(final String parentDocumentId, final String mimeType,
+                                 final String displayName) {
+        log("not implemented createDocument(" + parentDocumentId + "," + mimeType + "," + displayName + ")");
+        return null;
     }
 
     /**
@@ -143,123 +194,19 @@ public class ZipReadStorageProvider extends DocumentsProvider {
                 row.add(Root.COLUMN_ROOT_ID, mountInfo.zipId);
                 row.add(Root.COLUMN_DOCUMENT_ID, mountInfo.zipId);
                 row.add(Root.COLUMN_TITLE, mountInfo.zipId);
-                row.add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY
-                        // | Root.FLAG_SUPPORTS_SEARCH
-                        | Root.FLAG_SUPPORTS_IS_CHILD
-                        | Root.FLAG_SUPPORTS_EJECT);
+                int flags = Root.FLAG_LOCAL_ONLY;
+                // flags |= Root.FLAG_SUPPORTS_SEARCH
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    flags |= Root.FLAG_SUPPORTS_IS_CHILD;
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    flags |= Root.FLAG_SUPPORTS_EJECT;
+                }
+                row.add(Root.COLUMN_FLAGS, flags);
                 row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher);
             }
         }
         return result;
-    }
-
-
-    /**
-     * Ejects the root. Throws {@link IllegalStateException} if ejection failed.
-     *
-     * @param rootId the root to be ejected.
-     * @see Root#FLAG_SUPPORTS_EJECT
-     */
-    @Override
-    public void ejectRoot(String rootId) {
-        log("ejectRoot " + rootId);
-        MountInfo mountInfo = Zip2SafHelper.getMountInfo(rootId);
-        if (mountInfo == null)  throw new IllegalStateException("Eject: Root " + rootId + " not found");
-
-        MountInfoRepository repository = Zip2SafHelper.getRepository();
-        repository.remove(mountInfo);
-
-        getContext().getContentResolver()
-                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
-        AndroidMountInfoRepositoryHelper.saveRepository(getContext().getApplicationContext(), repository);
-    }
-
-    /**
-     * Create a new document and return its newly generated DocumentsContract.Document.COLUMN_DOCUMENT_ID.
-     * You must allocate a new DocumentsContract.Document.COLUMN_DOCUMENT_ID to represent the
-     * document, which must not change once returned.
-     *
-     * @param parentDocumentId the parent directory to create the new document under.
-     * @param mimeType the concrete MIME type associated with the new document. If the MIME type is not supported, the provider must throw.
-     * @param displayName the display name of the new document. The provider may alter this name to meet any internal constraints, such as avoiding conflicting names.
-     * @return new created documentID.
-     * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
-     */
-    @Override
-    public String createDocument(final String parentDocumentId, final String mimeType,
-            final String displayName) {
-        log("not implemented createDocument(" + parentDocumentId + "," + mimeType + "," + displayName + ")");
-        return null;
-    }
-
-    /**
-     * Open and return a thumbnail of the requested document.
-     * A provider should return a thumbnail closely matching the hinted size, attempting to
-     * serve from a local cache if possible. A provider should never return images more than double
-     * the hinted size.
-     * If you perform expensive operations to download or generate a thumbnail, you should
-     * periodically check CancellationSignal.isCanceled() to abort abandoned thumbnail requests.
-     *
-     * See Also:
-     * DocumentsContract.Document.FLAG_SUPPORTS_THUMBNAIL
-     *
-     * @param documentId the document to return.
-     * @param sizeHint hint of the optimal thumbnail dimensions.
-     * @param signal used by the caller to signal if the request should be cancelled. May be null.
-     * @return
-     * @throws FileNotFoundException
-     * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
-     */
-    @Override
-    public AssetFileDescriptor openDocumentThumbnail(final String documentId, final Point sizeHint,
-                                                     final CancellationSignal signal) throws FileNotFoundException {
-        log("openDocumentThumbnail(" + documentId +"," + sizeHint + ")");
-
-        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "openDocumentThumbnail")) {
-            return null;
-        }
-        // Assume documentId points to an image file. Build a thumbnail no larger than twice the sizeHint
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(documentId, options);
-        final int targetHeight = 2 * sizeHint.y;
-        final int targetWidth = 2 * sizeHint.x;
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        options.inSampleSize = 1;
-        if (height > targetHeight || width > targetWidth) {
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-            // height and width larger than the requested height and width.
-            while ((halfHeight / options.inSampleSize) > targetHeight
-                    || (halfWidth / options.inSampleSize) > targetWidth) {
-                options.inSampleSize *= 2;
-            }
-        }
-        options.inJustDecodeBounds = false;
-        File tempFile;
-        FileOutputStream out = null;
-        InputStream inputStream = null;
-        // !!!
-        try {
-            inputStream = openZipEntryInputStream(documentId,"create thumbnail from openDocumentThumbnail " + documentId);
-            Bitmap bitmap = BitmapFactory.decodeStream(inputStream,null, options);
-            tempFile = File.createTempFile("thumbnail", null, getContext().getCacheDir());
-            out = new FileOutputStream(tempFile);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
-        } catch (IOException e) {
-            Log.e(TAG, "openDocumentThumbnail " + documentId +
-                    " Error writing thumbnail", e);
-            return null;
-        } finally {
-            closeSilently(inputStream,  "Error closing thumbnail original");
-            closeSilently(out,  "Error closing thumbnail generated thumbnail");
-        }
-        // It appears the Storage Framework UI caches these results quite aggressively so there is little reason to
-        // write your own caching layer beyond what you need to return a single AssetFileDescriptor
-        return new AssetFileDescriptor(ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY), 0,
-                AssetFileDescriptor.UNKNOWN_LENGTH);
     }
 
     /**
@@ -398,28 +345,75 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         return null;
     }
 
-    /** to allow unittests without an existing zip file */
-    void includeLocalFileHeader(MatrixCursor result, String zipId, String dir, LocalFileHeader localFileHeader, Set<String> alreadyIncluded) {
-        String relPath = Zip2SafHelper.getRelPath(localFileHeader, dir);
-        if (relPath != null) {
-            boolean isDirectory = localFileHeader.isDirectory();
-            int end;
-            if (!isDirectory && (end = relPath.indexOf(Zip2SafHelper.PATH_DELIMITER) + 1) > 0) {
-                isDirectory = true;
-                relPath = relPath.substring(0,end);
-            }
-            if (alreadyIncluded == null || !alreadyIncluded.contains(relPath)) {
-                if (isDirectory) {
-                    includeDir(result, zipId, relPath, dir + relPath);
-                } else {
-                    includeFile(result, zipId, localFileHeader, relPath);
-                }
-                alreadyIncluded.add(relPath);
+    /**
+     * Open and return a thumbnail of the requested document.
+     * A provider should return a thumbnail closely matching the hinted size, attempting to
+     * serve from a local cache if possible. A provider should never return images more than double
+     * the hinted size.
+     * If you perform expensive operations to download or generate a thumbnail, you should
+     * periodically check CancellationSignal.isCanceled() to abort abandoned thumbnail requests.
+     * <p>
+     * See Also:
+     * DocumentsContract.Document.FLAG_SUPPORTS_THUMBNAIL
+     *
+     * @param documentId the document to return.
+     * @param sizeHint   hint of the optimal thumbnail dimensions.
+     * @param signal     used by the caller to signal if the request should be cancelled. May be null.
+     * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
+     */
+    @Override
+    public AssetFileDescriptor openDocumentThumbnail(final String documentId, final Point sizeHint,
+                                                     final CancellationSignal signal) throws FileNotFoundException {
+        log("openDocumentThumbnail(" + documentId + "," + sizeHint + ")");
+
+        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "openDocumentThumbnail")) {
+            return null;
+        }
+        // Assume documentId points to an image file. Build a thumbnail no larger than twice the sizeHint
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(documentId, options);
+        final int targetHeight = 2 * sizeHint.y;
+        final int targetWidth = 2 * sizeHint.x;
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        options.inSampleSize = 1;
+        if (height > targetHeight || width > targetWidth) {
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while ((halfHeight / options.inSampleSize) > targetHeight
+                    || (halfWidth / options.inSampleSize) > targetWidth) {
+                options.inSampleSize *= 2;
             }
         }
+        options.inJustDecodeBounds = false;
+        File tempFile;
+        FileOutputStream out = null;
+        InputStream inputStream = null;
+
+        try {
+            inputStream = openZipEntryInputStream(documentId, "create thumbnail from openDocumentThumbnail " + documentId);
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
+            tempFile = File.createTempFile("thumbnail", null, getContext().getCacheDir());
+            out = new FileOutputStream(tempFile);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+        } catch (IOException e) {
+            Log.e(TAG, "openDocumentThumbnail " + documentId +
+                    " Error writing thumbnail", e);
+            return null;
+        } finally {
+            closeSilently(inputStream, "Error closing thumbnail original");
+            closeSilently(out, "Error closing thumbnail generated thumbnail");
+        }
+        // It appears the Storage Framework UI caches these results quite aggressively so there is little reason to
+        // write your own caching layer beyond what you need to return a single AssetFileDescriptor
+        return new AssetFileDescriptor(ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY), 0,
+                AssetFileDescriptor.UNKNOWN_LENGTH);
     }
 
-    private void includeDir(final MatrixCursor result, @NonNull String zipId, String dirNameWithoutPath,String zipDirPath) {
+    private void includeDir(final MatrixCursor result, @NonNull String zipId, String dirNameWithoutPath, String zipDirPath) {
         includeResult(result, dirNameWithoutPath, Zip2SafHelper.getDocumentId(zipId, zipDirPath), MIME_TYPE_DIR, null, null, 0);
     }
 
@@ -511,7 +505,6 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      * @param documentId the document to rename.
      * @param displayName the updated display name of the document. The provider may alter this name to meet any internal constraints, such as avoiding conflicting names.
      * @return new generated documentId
-     * @throws FileNotFoundException
      * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
      */
     @Override
@@ -537,7 +530,6 @@ public class ZipReadStorageProvider extends DocumentsProvider {
      * @param documentId the document to return.
      * @param mode the mode to open with, such as 'r', 'w', or 'rw'.
      * @param signal used by the caller to signal if the request should be cancelled. May be null.
-     * @throws FileNotFoundException
      * @throws AuthenticationRequiredException – If authentication is required from the user (such as login credentials), but it is not guaranteed that the client will handle this properly.
      */
     @Override
@@ -550,35 +542,79 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         }
 
         InputStream is = openZipEntryInputStream(documentId, "openDocument");
-        return createPipeDescriptor(is, "openDocument "+ documentId);
+        return createPipeDescriptor(is, "openDocument " + documentId);
+    }
+
+    /**
+     * to allow unittests without an existing zip file
+     */
+    void includeLocalFileHeader(MatrixCursor result, String zipId, String dir, LocalFileHeader localFileHeader, Set<String> alreadyIncluded) {
+        String relPath = Zip2SafHelper.getRelPath(localFileHeader, dir);
+        if (relPath != null) {
+            boolean isDirectory = localFileHeader.isDirectory();
+            int end;
+            if (!isDirectory && (end = relPath.indexOf(Zip2SafHelper.PATH_DELIMITER) + 1) > 0) {
+                isDirectory = true;
+                relPath = relPath.substring(0, end);
+            }
+            if (alreadyIncluded == null || !alreadyIncluded.contains(relPath)) {
+                if (isDirectory) {
+                    includeDir(result, zipId, relPath, dir + relPath);
+                } else {
+                    includeFile(result, zipId, localFileHeader, relPath);
+                }
+                if (alreadyIncluded != null) {
+                    alreadyIncluded.add(relPath);
+                }
+            }
+        }
     }
 
     // https://stackoverflow.com/questions/18212152/transfer-inputstream-to-another-service-across-process-boundaries-with-parcelf
     @Nullable
     protected ParcelFileDescriptor createPipeDescriptor(InputStream is, String dbgContext) {
-        int len;
-        byte[] buf = new byte[1024];
         OutputStream os = null;
         try {
             ParcelFileDescriptor[] pfd = ParcelFileDescriptor.createPipe();//  inputStreamService.inputStream();
             os = new ParcelFileDescriptor.AutoCloseOutputStream(pfd[1]); // write side of pipe
-            while ((len = is.read(buf)) > 0) {
-                os.write(buf, 0, len);
-            }
+
+            new TransferThread(is, os, dbgContext).start();
             return pfd[0]; // read side of pipe
         } catch (IOException e) {
-            Log.e(TAG, "createPipeDescriptor " + dbgContext, e );
-        } finally {
-            closeSilently(is,  dbgContext + " inputStream");
-            closeSilently(os,  dbgContext + " outputStream");
+            Log.e(TAG, dbgContext + " createPipeDescriptor", e);
+            closeSilently(is, dbgContext + " inputStream");
+            closeSilently(os, dbgContext + " outputStream");
         }
         return null;
     }
 
-    protected static void closeSilently(Closeable stream, Object dbgContext) {
-        if (stream != null) {
-            try { stream.close(); } catch (IOException e1) {
-                Log.e(TAG, "closeSilently " + dbgContext.toString(), e1 );
+    static class TransferThread extends Thread {
+        protected final InputStream in;
+        protected final OutputStream out;
+        private final String dbgContext;
+
+        TransferThread(InputStream in, OutputStream out, String dbgContext) {
+            super("TransferThread " + dbgContext);
+            this.in = in;
+            this.out = out;
+            this.dbgContext = dbgContext;
+            setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            int len;
+            byte[] buf = new byte[1024];
+            try {
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+            } catch (IOException ioException) {
+                Log.e(TAG, dbgContext, ioException);
+
+            } finally {
+                closeSilently(in, dbgContext + " inputStream");
+                closeSilently(out, dbgContext + " outputStream");
             }
         }
     }
