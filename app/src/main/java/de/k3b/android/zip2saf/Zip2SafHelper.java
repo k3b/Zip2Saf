@@ -14,14 +14,27 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Calendar;
 
 import de.k3b.zip2saf.data.MountInfo;
 import de.k3b.zip2saf.data.MountInfoRepository;
 
 public class Zip2SafHelper {
     static final String PATH_DELIMITER = "/";
-    /** load on demand via getRepository() */
+    /**
+     * load on demand via getRepository()
+     */
     private static MountInfoRepository repository = null;
+
+    private static long millisecsSince2100;
+
+    static {
+        Calendar cal = Calendar.getInstance();
+        cal.clear();
+        // 2100-02-01
+        cal.set(2100, 1, 1);
+        millisecsSince2100 = cal.getTimeInMillis();
+    }
 
     //--------------
     static String getRelPath(LocalFileHeader localFileHeader, String zipParentDir) {
@@ -29,7 +42,9 @@ public class Zip2SafHelper {
         return getRelPath(zipPath, zipParentDir);
     }
 
-    /** @return zipPath without zipParentDir or null, if zipPath is not below zipParentDir. */
+    /**
+     * @return zipPath without zipParentDir or null, if zipPath is not below zipParentDir.
+     */
     @Nullable
     static String getRelPath(String zipPath, String zipParentDir) {
         if (zipPath != null && zipPath.startsWith(zipParentDir)) return zipPath.substring(zipParentDir.length());
@@ -111,5 +126,25 @@ public class Zip2SafHelper {
             e.printStackTrace();
         }
         return path;
+    }
+
+    @Nullable
+    public static Long getTimeInMilliSince1970OrNull(long timeInSecsSince1970) {
+        // assume Secs Since 1970-01-01
+        Long result = timeInSecsSince1970;
+        if (result == null || result == 0) {
+            return null;
+        }
+
+        // assume milliSecs since 1970 as required by Document.COLUMN_LAST_MODIFIED
+        result *= 1000;
+
+        if (result > millisecsSince2100) {
+            // if calculated time is bigger than 2100-01-01 assume that
+            // input time timeInSecsSince1970 was already in milliSecs since 1970
+            return timeInSecsSince1970;
+        }
+
+        return result;
     }
 }

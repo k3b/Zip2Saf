@@ -417,6 +417,11 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         includeResult(result, dirNameWithoutPath, Zip2SafHelper.getDocumentId(zipId, zipDirPath), MIME_TYPE_DIR, null, null, 0);
     }
 
+    static private Long orNull(long uncompressedSize) {
+        if (uncompressedSize == 0) return null;
+        return uncompressedSize;
+    }
+
     private void includeFile(final MatrixCursor result, @NonNull String zipId, final LocalFileHeader file, String filenameWithoutPath) {
         String mimeType = getDocumentType(filenameWithoutPath);
         /*
@@ -428,10 +433,17 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         int flags = 0;
         // We only show thumbnails for image files - expect a call to openDocumentThumbnail for each file that has
         // this flag set
-        if (mimeType.startsWith("image/"))
+        if (mimeType.startsWith("image/")) {
             flags |= Document.FLAG_SUPPORTS_THUMBNAIL;
+        }
 
-        includeResult(result, filenameWithoutPath, Zip2SafHelper.getDocumentId(zipId, file.getFileName()), mimeType, file.getLastModifiedTime(), file.getUncompressedSize(), flags);
+        // zipfile entry may or may not contain a value for LastModified or UncompressedSize
+        Long lastModifiedTimeInMilliSince1970OrNull = Zip2SafHelper.getTimeInMilliSince1970OrNull(
+                file.getLastModifiedTimeEpoch());
+
+        includeResult(result, filenameWithoutPath, Zip2SafHelper.getDocumentId(
+                zipId, file.getFileName()), mimeType, lastModifiedTimeInMilliSince1970OrNull,
+                orNull(file.getUncompressedSize()), flags);
     }
 
     void includeResult(MatrixCursor result, String filenameWithoutPath, String documentId,

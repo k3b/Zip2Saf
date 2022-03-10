@@ -1,9 +1,6 @@
-Bugs
-
 v transfer of zip-entry in Background-Thread
 
-* wrong file date
-* wrong file size
+Bugs v zip entry may have missing file date or file size vv cannot solve this
 
 Security
 
@@ -13,5 +10,5 @@ Security
 * on zip-close delete temp-preview-folder
 
 * Settings
-* password protected zips
-* Option to disable "image/*" preview
+  ** password protected zips
+  ** Option to disable "image/*" preview
