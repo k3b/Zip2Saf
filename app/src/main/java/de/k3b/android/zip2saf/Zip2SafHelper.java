@@ -1,5 +1,6 @@
 package de.k3b.android.zip2saf;
 
+import android.content.Context;
 import android.net.Uri;
 import android.provider.DocumentsContract;
 import android.util.Log;
@@ -10,6 +11,7 @@ import androidx.annotation.Nullable;
 import net.lingala.zip4j.io.inputstream.ZipInputStream;
 import net.lingala.zip4j.model.LocalFileHeader;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -78,8 +80,9 @@ public class Zip2SafHelper {
 
         String result = documentId;
         int end = documentId.indexOf(PATH_DELIMITER);
-        if (end >= 0) result = documentId.substring(0,end);
-        if (ZipReadStorageProvider.debug) Log.i(ZipReadStorageProvider.TAG, "getRootId(" + documentId + ") => " + result);
+        if (end >= 0) result = documentId.substring(0, end);
+        if (ZipReadStorageProvider.debug) Log.i(ZipReadStorageProvider.TAG, "getRootId('"
+                + documentId + "') => '" + result + "'");
         return result;
     }
 
@@ -97,7 +100,8 @@ public class Zip2SafHelper {
                 result = documentId.substring(begin);
             }
         }
-        if (ZipReadStorageProvider.debug) Log.i(ZipReadStorageProvider.TAG, "getZipPath(" + documentId + ") => " + result);
+        if (ZipReadStorageProvider.debug) Log.i(ZipReadStorageProvider.TAG, "getZipPath('"
+                + documentId + "') => '" + result + "'");
         return result;
     }
 
@@ -146,5 +150,29 @@ public class Zip2SafHelper {
         }
 
         return result;
+    }
+
+    @NonNull
+    public static File getThumbCacheDir(@NonNull Context context, @NonNull String rootId) {
+        File cacheDir = new File(context.getCacheDir(), rootId);
+        cacheDir.mkdirs();
+        return cacheDir;
+    }
+
+    public static void clearThumbCache(@NonNull Context context, @NonNull String zipId) {
+        File thumbCacheDir = getThumbCacheDir(context, zipId);
+        int delCount = 0;
+        if (thumbCacheDir.exists()) {
+            for (File f : thumbCacheDir.listFiles()) {
+                if (f.delete()) delCount++;
+            }
+            if (thumbCacheDir.delete()) delCount++;
+        }
+
+        if (delCount > 0) {
+            Log.i(ZipReadStorageProvider.TAG, "clearThumbCache('" + zipId +
+                    "')  items deleted: " + delCount);
+
+        }
     }
 }

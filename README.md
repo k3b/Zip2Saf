@@ -17,6 +17,7 @@ Other Android Storage Access Framework Provider (SAF-Provider).
 
 * https://github.com/alexbakker/webdav-provider
 * mount network shares: https://f-droid.org/en/packages/com.wa2c.android.cifsdocumentsprovider/
+* private local storage https://github.com/2bllw8/anemo
 
 Filemanagers that can mount Android Storage Access Framework Provider (SAF-Provider)
 

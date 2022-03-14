@@ -125,25 +125,9 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     }
 
 
-    /**
-     * Ejects the root. Throws {@link IllegalStateException} if ejection failed.
-     *
-     * @param rootId the root to be ejected.
-     * @see Root#FLAG_SUPPORTS_EJECT
-     */
-    @Override
-    public void ejectRoot(String rootId) {
-        log("ejectRoot " + rootId);
-        MountInfo mountInfo = Zip2SafHelper.getMountInfo(rootId);
-        if (mountInfo == null)
-            throw new IllegalStateException("Eject: Root " + rootId + " not found");
-
-        MountInfoRepository repository = Zip2SafHelper.getRepository();
-        repository.remove(mountInfo);
-
-        getContext().getContentResolver()
-                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
-        AndroidMountInfoRepositoryHelper.saveRepository(getContext().getApplicationContext(), repository);
+    @NonNull
+    private static File createThumbFile(@NonNull Context context, @NonNull String rootId) throws IOException {
+        return File.createTempFile("thumbnail", ".png", Zip2SafHelper.getThumbCacheDir(context, rootId));
     }
 
     private static void log(String msg) {
@@ -285,9 +269,9 @@ public class ZipReadStorageProvider extends DocumentsProvider {
         try (ZipInputStream zipInputStream = getZipInputStream(parentDocumentId, mountInfo)) {
             String dir = Zip2SafHelper.getDirectoryID(Zip2SafHelper.getZipPath(parentDocumentId));
             Set<String> duplicates = new HashSet<>();
-           while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
-               includeLocalFileHeader(result, mountInfo.zipId, dir, localFileHeader, duplicates);
-           }
+            while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
+                includeLocalFileHeader(result, mountInfo.zipId, dir, localFileHeader, duplicates);
+            }
         } catch (IOException ioException) {
             Log.e(TAG, debugMsg + ioException.getMessage(), ioException);
         }
@@ -295,45 +279,25 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     }
 
     /**
-     * Return metadata for the single requested document. You should avoid making network requests
-     * to keep this request fast.
-     * @param documentId the document to return.
-     * @param projection list of DocumentsContract.Document columns to put into the cursor. If null
-     *                   all supported columns should be included.
-     * @throws  AuthenticationRequiredException – If authentication is required from the user
-     *          (such as login credentials), but it is not guaranteed that the client will
-     *          handle this properly.
+     * Ejects the root. Throws {@link IllegalStateException} if ejection failed.
+     *
+     * @param rootId the root to be ejected.
+     * @see Root#FLAG_SUPPORTS_EJECT
      */
     @Override
-    public Cursor queryDocument(final String documentId, final String[] projection) {
-        queryId++;
-        String debugMsg = "queryDocument('" + documentId + "') ";
-        log(debugMsg);
+    public void ejectRoot(String rootId) {
+        log("ejectRoot " + rootId);
+        MountInfo mountInfo = Zip2SafHelper.getMountInfo(rootId);
+        if (mountInfo == null)
+            throw new IllegalStateException("Eject: Root " + rootId + " not found");
 
-        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "queryDocument")) {
-            return null;
-        }
-        // Create a cursor with either the requested fields, or the default projection if "projection" is null.
-        final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
+        MountInfoRepository repository = Zip2SafHelper.getRepository();
+        repository.remove(mountInfo);
+        Zip2SafHelper.clearThumbCache(getContext(), mountInfo.zipId);
 
-        LocalFileHeader localFileHeader;
-        MountInfo mountInfo = Zip2SafHelper.getRepository().getById(Zip2SafHelper.getRootId(documentId));
-        try (ZipInputStream zipInputStream = getZipInputStream(documentId, mountInfo)){
-            String zipPath = Zip2SafHelper.getZipPath(documentId);
-            if (zipPath.isEmpty()) {
-                // special case: root dir
-                includeDir(result,mountInfo.zipId,"","");
-            } else {
-                while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
-                    if (zipPath.equals(localFileHeader.getFileName())) {
-                        includeLocalFileHeader(result, mountInfo.zipId, zipPath, localFileHeader, null);
-                    }
-                }
-            }
-        } catch (IOException ioException) {
-            Log.e(TAG, debugMsg + ioException.getMessage(), ioException);
-        }
-        return result;
+        getContext().getContentResolver()
+                .notifyChange(DocumentsContract.buildRootsUri(BuildConfig.DOCUMENTS_AUTHORITY), null);
+        AndroidMountInfoRepositoryHelper.saveRepository(getContext().getApplicationContext(), repository);
     }
 
     private InputStream openZipEntryInputStream(final String documentId, String debugContext) {
@@ -360,6 +324,52 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     }
 
     /**
+     * Return metadata for the single requested document. You should avoid making network requests
+     * to keep this request fast.
+     * @param documentId the document to return.
+     * @param projection list of DocumentsContract.Document columns to put into the cursor. If null
+     *                   all supported columns should be included.
+     * @throws AuthenticationRequiredException – If authentication is required from the user
+     *          (such as login credentials), but it is not guaranteed that the client will
+     *          handle this properly.
+     */
+    @Override
+    public Cursor queryDocument(final String documentId, final String[] projection) {
+        queryId++;
+        String debugMsg = "queryDocument('" + documentId + "') ";
+        log(debugMsg);
+
+        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "queryDocument")) {
+            return null;
+        }
+        // Create a cursor with either the requested fields, or the default projection if "projection" is null.
+        final MatrixCursor result = new MatrixCursor(projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION);
+
+        LocalFileHeader localFileHeader;
+        MountInfo mountInfo = Zip2SafHelper.getRepository().getById(Zip2SafHelper.getRootId(documentId));
+        ZipInputStream zipInputStream = null;
+        try {
+            zipInputStream = getZipInputStream(documentId, mountInfo);
+            String zipPath = Zip2SafHelper.getZipPath(documentId);
+            if (zipPath.isEmpty()) {
+                // special case: root dir
+                includeDir(result, mountInfo.zipId, "", "");
+            } else {
+                while ((localFileHeader = zipInputStream.getNextEntry()) != null) {
+                    if (zipPath.equals(localFileHeader.getFileName())) {
+                        includeLocalFileHeader(result, mountInfo.zipId, zipPath, localFileHeader, null);
+                    }
+                }
+            }
+        } catch (IOException ioException) {
+            Log.e(TAG, debugMsg + ioException.getMessage(), ioException);
+        } finally {
+            closeSilently(zipInputStream, "db");
+        }
+        return result;
+    }
+
+    /**
      * Open and return a thumbnail of the requested document.
      * A provider should return a thumbnail closely matching the hinted size, attempting to
      * serve from a local cache if possible. A provider should never return images more than double
@@ -378,16 +388,55 @@ public class ZipReadStorageProvider extends DocumentsProvider {
     @Override
     public AssetFileDescriptor openDocumentThumbnail(final String documentId, final Point sizeHint,
                                                      final CancellationSignal signal) throws FileNotFoundException {
+        queryId++;
         String dbgMsg = "openDocumentThumbnail('" + documentId + "'," + sizeHint + ") ";
-        log(dbgMsg);
 
-        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), "openDocumentThumbnail")) {
+        if (ZipReadStorageProvider.isMissingReadPermission(getContext(), dbgMsg)) {
             return null;
         }
         // Assume documentId points to an image file. Build a thumbnail no larger than twice the sizeHint
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(documentId, options);
+
+        InputStream inputStream = null;
+
+        try {
+            inputStream = openZipEntryInputStream(documentId, dbgMsg + " reading original image size");
+            BitmapFactory.decodeStream(inputStream, null, options);
+            caculateScaleDown(sizeHint, options);
+        } catch (Exception e) {
+            Log.e(TAG, dbgMsg + "Error reading original image size ", e);
+            return null;
+        } finally {
+            closeSilently(inputStream, dbgMsg + "  closing reading original image size");
+            inputStream = null;
+        }
+
+        File tempFile = null;
+        FileOutputStream out = null;
+        try {
+            inputStream = openZipEntryInputStream(documentId, dbgMsg + " create thumbnail");
+            Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
+            tempFile = createThumbFile(getContext(), Zip2SafHelper.getRootId(documentId));
+            out = new FileOutputStream(tempFile);
+            log(dbgMsg + "scale=" + (1.0 / options.inSampleSize) +
+                    ", file=" + tempFile.getAbsolutePath());
+
+            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
+        } catch (IOException e) {
+            Log.e(TAG, dbgMsg + "Error writing thumbnail " + (tempFile == null ? "" : tempFile.getAbsolutePath()), e);
+            return null;
+        } finally {
+            closeSilently(inputStream, dbgMsg + "  closing thumbnail original");
+            closeSilently(out, dbgMsg + " closing generated thumbnail");
+        }
+        // It appears the Storage Framework UI caches these results quite aggressively so there is little reason to
+        // write your own caching layer beyond what you need to return a single AssetFileDescriptor
+        return new AssetFileDescriptor(ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY), 0,
+                AssetFileDescriptor.UNKNOWN_LENGTH);
+    }
+
+    private void caculateScaleDown(Point sizeHint, BitmapFactory.Options options) {
         final int targetHeight = 2 * sizeHint.y;
         final int targetWidth = 2 * sizeHint.x;
         final int height = options.outHeight;
@@ -404,27 +453,6 @@ public class ZipReadStorageProvider extends DocumentsProvider {
             }
         }
         options.inJustDecodeBounds = false;
-        File tempFile;
-        FileOutputStream out = null;
-        InputStream inputStream = null;
-
-        try {
-            inputStream = openZipEntryInputStream(documentId, dbgMsg + " create thumbnail");
-            Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
-            tempFile = File.createTempFile("thumbnail", null, getContext().getCacheDir());
-            out = new FileOutputStream(tempFile);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 90, out);
-        } catch (IOException e) {
-            Log.e(TAG, dbgMsg + "Error writing thumbnail", e);
-            return null;
-        } finally {
-            closeSilently(inputStream, dbgMsg + "  closing thumbnail original");
-            closeSilently(out, dbgMsg + " closing generated thumbnail");
-        }
-        // It appears the Storage Framework UI caches these results quite aggressively so there is little reason to
-        // write your own caching layer beyond what you need to return a single AssetFileDescriptor
-        return new AssetFileDescriptor(ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY), 0,
-                AssetFileDescriptor.UNKNOWN_LENGTH);
     }
 
     private void includeDir(final MatrixCursor result, @NonNull String zipId, String dirNameWithoutPath, String zipDirPath) {

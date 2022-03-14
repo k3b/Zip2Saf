@@ -41,6 +41,7 @@ public class MountService {
                 requestMount();
             } else {
                 repository.remove(item);
+                Zip2SafHelper.clearThumbCache(activity, item.zipId);
                 notifyChange();
             }
         }
